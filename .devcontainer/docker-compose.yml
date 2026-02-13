@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # Source Database (OpenMRS MySQL)
+  source-db:
+    image: mysql:8.0
+    container_name: omop-source-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: openmrs
+      MYSQL_USER: openmrs
+      MYSQL_PASSWORD: openmrs
+    ports:
+      - "3306:3306"
+    volumes:
+      - source-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Target Database (OMOP PostgreSQL)
+  omop-db:
+    image: postgres:15
+    container_name: omop-target-db
+    environment:
+      POSTGRES_DB: omop
+      POSTGRES_USER: omop
+      POSTGRES_PASSWORD: omop
+    ports:
+      - "5432:5432"
+    volumes:
+      - omop-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U omop"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # phpMyAdmin (MySQL GUI)
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: omop-phpmyadmin
+    environment:
+      PMA_HOST: source-db
+      PMA_PORT: 3306
+    ports:
+      - "8080:80"
+    depends_on:
+      - source-db
+
+  # pgAdmin (PostgreSQL GUI)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: omop-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@omop.org
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "8081:80"
+    depends_on:
+      - omop-db
+
+volumes:
+  source-db-data:
+  omop-db-data:
